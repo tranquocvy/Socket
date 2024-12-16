@@ -1,82 +1,72 @@
-import os
 import socket
+import os 
 import threading
-from datetime import datetime
+import time
+import datetime
+#Cấu hình server
+HOST = "127.0.0.1"
+PORT = 65432
+STORAGE_DIR = "D:/Socket/Storage"
 
-# Cấu hình server
-SERVER_HOST = "127.0.0.1"
-SERVER_PORT = 65432
-BUFFER_SIZE = 4096
-UPLOAD_DIR = 'server_files'
-FORMAT = "utf8"
-# Đảm bảo thư mục lưu trữ file tồn tại
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(STORAGE_DIR, exist_ok=True)
 
-def handle_client(client_socket, client_address):
-    print(f"[{datetime.now()}] Kết nối từ {client_address}")
-
-    while True:
-        try:
+def handle_client(client_socket, address):
+    print(f"Client connected: {address}")
+    try:
+        while True:
             # Nhận lệnh từ client
-            command = client_socket.recv(BUFFER_SIZE).decode()
+            command = client_socket.recv(1024).decode()
             if not command:
                 break
-            
-            cmd, *args = command.split()
+            print(f"Received command: {command} from {address}")
 
-            if cmd == "upload":
-                filename = args[0]
-                filepath = os.path.join(UPLOAD_DIR, filename)
-                
-                # Đảm bảo tên file duy nhất
-                base, ext = os.path.splitext(filepath)
-                counter = 1
-                while os.path.exists(filepath):
-                    filepath = f"{base}_{counter}{ext}"
-                    counter += 1
-
-                # Nhận dữ liệu file từ client
+            if command.startswith("upload"):
+                _, filename = command.split(" ", 1)
+                filepath = os.path.join(STORAGE_DIR, filename)
+                basename, extension = os.path.splitext(filepath)
+                current_datetime = datetime.datetime.now()
+                formatted_datetime = current_datetime.strftime("%H.%M.%S_%d.%m.%Y")
+                new_filepath = f"{basename}_{formatted_datetime}{extension}"
                 with open(filepath, 'wb') as f:
                     while True:
-                        data = client_socket.recv(BUFFER_SIZE)
-                        if data == b"EOF":
+                        data = client_socket.recv(1024)
+                        if data == b"END":
                             break
                         f.write(data)
-                client_socket.send("Upload thành công.")
+                    print(f"File {filename} saved as {filepath}")
+                    client_socket.send(f"Upload {filename} success".encode())
 
-            elif cmd == "download":
-                filename = args[0]
-                filepath = os.path.join(UPLOAD_DIR, filename)
-
+            elif command.startswith("download"):
+                _, filename = command.split(" ", 1)
+                filepath = os.path.join(STORAGE_DIR, filename)
                 if os.path.exists(filepath):
+                    client_socket.send(f"READY".encode())
                     with open(filepath, 'rb') as f:
-                        while chunk := f.read(BUFFER_SIZE):
-                            client_socket.send(chunk)
-                    client_socket.send(b"EOF")
+                        while (data := f.read(1024)):
+                            client_socket.send(data)
+                    client_socket.send(b"END")
+                    print(f"File {filename} sent to {address}")
                 else:
-                    client_socket.send("File không tồn tại.")
+                    client_socket.send(f"Error: {filename} not found".encode())
 
             else:
-                client_socket.send("Lệnh không hợp lệ.")
+                client_socket.send(f"Invalid command: {command}".encode())
 
-        except (ConnectionResetError, BrokenPipeError):
-            print(f"[{datetime.now()}] Mất kết nối từ {client_address}")
-            break
+    except Exception as e:
+        print(f"Error handling client {address}: {e}")
+    finally:
+        print(f"Client disconnected: {address}")
+        client_socket.close()
 
-    client_socket.close()
-
-def start_server():
-    # Tạo socket server
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind((SERVER_HOST, SERVER_PORT))
-    server_socket.listen(5)
-    print(f"Server lắng nghe tại {SERVER_HOST}:{SERVER_PORT}")
+def main():
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind((HOST, PORT))
+    server.listen(5)
+    print(f"Server running on {HOST}:{PORT}")
 
     while True:
-        client_socket, client_address = server_socket.accept()
-        thread = threading.Thread(target=handle_client, args=(client_socket, client_address))
-        thread.start()
-        print(f"[{datetime.now()}] Đang xử lý {threading.active_count() - 1} client")
+        client_socket, address = server.accept()
+        threading.Thread(target=handle_client, args=(client_socket, address)).start()
 
 if __name__ == "__main__":
-    start_server()
+    main()
