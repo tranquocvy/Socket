@@ -11,24 +11,28 @@ def upload_file(client_socket, filepath):
         return
 
     filename = os.path.basename(filepath)
-    client_socket.send(f"upload {filename}".encode())
+    client_socket.send(f"upload {filename}".encode('utf-8'))
+
     with open(filepath, 'rb') as f:
         while (data := f.read(1024)):
             client_socket.send(data)
-    client_socket.send(b"END")
-    print(client_socket.recv(1024).decode())
+    client_socket.send(b'END')
+    print(client_socket.recv(1024).decode('utf-8'))
 
 def download_file(client_socket, filename):
-    client_socket.send(f"download {filename}".encode())
+    client_socket.send(f"download {filename}".encode('utf-8'))
     response = client_socket.recv(1024).decode()
 
     if response == "READY":
         with open(filename, 'wb') as f:
             while True:
                 data = client_socket.recv(1024)
-                if data == b"END":
+                end_marker_index = data.find(b"END")
+                if end_marker_index + 3 == len(data):
+                    f.write(data[:end_marker_index])
                     break
-                f.write(data)
+                else:
+                    f.write(data)
         print(f"File {filename} downloaded successfully")
     else:
         print(response)
