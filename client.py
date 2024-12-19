@@ -1,5 +1,6 @@
 import socket
 import os
+import time
 
 # Cấu hình client
 SERVER_HOST = '127.0.0.1'
@@ -7,24 +8,52 @@ SERVER_PORT = 65432
 
 def upload_file(client_socket, filepath):
     if not os.path.exists(filepath):
-        print(f"Error: File {filepath} not found")
+        print(f"Error: Path {filepath} not found")  
         return
 
     filename = os.path.basename(filepath)
-    client_socket.send(f"upload {filename}".encode('utf-8'))
+    if os.path.isfile(filepath):
+        client_socket.send(f"upload {filename}".encode('utf-8'))
+        client_socket.recv(1024)
 
-    with open(filepath, 'rb') as f:
-        while (data := f.read(1024)):
-            client_socket.send(data)
-    client_socket.send(b'END')
-    print(client_socket.recv(1024).decode('utf-8'))
+        with open(filepath, 'rb') as f:
+            while (data := f.read(1024)):
+                client_socket.send(data)
+                client_socket.recv(1024)
+        client_socket.send(b'END')
+        print(client_socket.recv(1024).decode('utf-8'))
+        
+    elif os.path.isdir(filepath):
+        client_socket.send(f"upload_folder {filename}".encode('utf-8'))
+        ack = client_socket.recv(1024)
+        for root, dirs, files in os.walk(filepath):
+            for file in files:
+                file_path = os.path.join(root, file)
+                relative_path = os.path.relpath(file_path, filepath)
+
+                # Gửi thông tin file
+                client_socket.send(f"file {relative_path}".encode('utf-8'))
+                ack = client_socket.recv(1024)
+     
+                # Gửi nội dung file
+                with open(file_path, 'rb') as f:
+                    while (data := f.read(1024)):
+                        client_socket.send(data)
+                        ack = client_socket.recv(1024)
+                client_socket.send(b'END')
+
+            client_socket.send(b'FOLDER_END')
+            print(client_socket.recv(1024).decode('utf-8'))
 
 def download_file(client_socket, filename):
-    client_socket.send(f"download {filename}".encode('utf-8'))
+    client_socket.send(f"download {filename}".encode())
     response = client_socket.recv(1024).decode()
-
+    download_path = input("Nhap duong dan:  ")
+    if not os.path.isdir(download_path):
+        os.makedirs(download_path)
+    file_path = os.path.join(download_path, filename)
     if response == "READY":
-        with open(filename, 'wb') as f:
+        with open(file_path, 'wb') as f:
             while True:
                 data = client_socket.recv(1024)
                 end_marker_index = data.find(b"END")

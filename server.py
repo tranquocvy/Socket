@@ -21,6 +21,7 @@ def handle_client(client_socket, address):
             print(f"Received command: {command} from {address}")
 
             if command.startswith("upload"):
+                client_socket.send(b'ACK')
                 _, filename = command.split(" ", 1)
                 filepath = os.path.join(STORAGE_DIR, filename)
                 basename, extension = os.path.splitext(filepath)
@@ -31,31 +32,63 @@ def handle_client(client_socket, address):
                 with open(new_filepath, 'wb') as f:
                     while True:
                         data = client_socket.recv(1024)
-                        end_marker_index = data.find(b"END")
-                        if end_marker_index + 3 == len(data):
-                            f.write(data[:end_marker_index])
+                        if data == b"END":
                             break
                         else:
                             f.write(data)
+                            client_socket.send(b"ACK")
 
                 print(f"File {filename} saved as {new_filepath}")
                 client_socket.send(f"Upload {filename} success".encode('utf-8'))
+
+            elif command.startswith("upload_folder"):
+                client_socket.send(b"ACK")
+
+                _, folder_name = command.split(" ", 1)
+                folder_path = os.path.join(STORAGE_DIR, folder_name)
+                os.makedirs(folder_path, exist_ok=True)  # Tạo folder gốc trên server
+                
+                while True:
+                    data = client_socket.recv(1024).decode('utf-8')
+
+                    if data == "FOLDER_END":
+                        print(f"Folder {folder_name} upload completed")
+                        client_socket.send(f"Upload folder {folder_name} success".encode('utf-8'))
+                        break
+
+                    if data.startswith("file"):
+                        client_socket.send(b"ACK")
+
+                        _, relative_path = data.split(" ", 1)
+                        file_path = os.path.join(folder_path, relative_path)
+                        os.makedirs(os.path.dirname(file_path), exist_ok=True)  # Tạo lại cấu trúc thư mục
+
+                        with open(file_path, 'wb') as f:
+                            while True:
+                                data = client_socket.recv(1024)
+                                if data == b"END":
+                                    break
+                                else:
+                                    f.write(data)
+                                    client_socket.send(b"ACK")
+
+                        print(f"File {relative_path} saved to {file_path}")
 
             elif command.startswith("download"):
                 _, filename = command.split(" ", 1)
                 filepath = os.path.join(STORAGE_DIR, filename)
                 if os.path.exists(filepath):
-                    client_socket.send(f"READY".encode('utf-8'))
+                    client_socket.send(f"READY".encode())
                     with open(filepath, 'rb') as f:
                         while (data := f.read(1024)):
                             client_socket.send(data)
                     client_socket.send(b"END")
                     print(f"File {filename} sent to {address}")
                 else:
-                    client_socket.send(f"Error: {filename} not found".encode('utf-8'))
+                    client_socket.send(f"Error: {filename} not found".encode())
 
             else:
-                client_socket.send(f"Invalid command: {command}".encode('utf-8'))
+                client_socket.send(f"Invalid command: {command}".encode())
 
     except Exception as e:
         print(f"Error handling client {address}: {e}")
