@@ -24,8 +24,9 @@ def upload_file(client_socket, filepath):
         print(client_socket.recv(1024).decode('utf-8'))
         
     elif os.path.isdir(filepath):
-        client_socket.send(f"upload_folder {filename}".encode('utf-8'))
+        client_socket.send(f"folder_upload {filename}".encode('utf-8'))
         ack = client_socket.recv(1024)
+
         for root, dirs, files in os.walk(filepath):
             for file in files:
                 file_path = os.path.join(root, file)
@@ -41,9 +42,11 @@ def upload_file(client_socket, filepath):
                         client_socket.send(data)
                         ack = client_socket.recv(1024)
                 client_socket.send(b'END')
+                ack=client_socket.recv(1024)
 
-            client_socket.send(b'FOLDER_END')
-            print(client_socket.recv(1024).decode('utf-8'))
+        client_socket.send(b'FOLDER_END')
+        client_socket.recv(1024)
+        print(client_socket.recv(1024).decode('utf-8'))
 
 def download_file(client_socket, filename):
     client_socket.send(f"download {filename}".encode())

@@ -41,32 +41,36 @@ def handle_client(client_socket, address):
                 print(f"File {filename} saved as {new_filepath}")
                 client_socket.send(f"Upload {filename} success".encode('utf-8'))
 
-            elif command.startswith("upload_folder"):
+            elif command.startswith("folder_upload"):
                 client_socket.send(b"ACK")
 
                 _, folder_name = command.split(" ", 1)
-                folder_path = os.path.join(STORAGE_DIR, folder_name)
-                os.makedirs(folder_path, exist_ok=True)  # Tạo folder gốc trên server
+                folderpath = os.path.join(STORAGE_DIR, folder_name)
+                basename, extension = os.path.splitext(folderpath)
+                current_datetime = datetime.datetime.now()
+                formatted_datetime = current_datetime.strftime("%H.%M.%S_%d.%m.%Y")
+                new_folderpath = f"{basename}_{formatted_datetime}{extension}"
+
+                os.makedirs(new_folderpath, exist_ok=True)  # Tạo folder gốc trên server
                 
                 while True:
                     data = client_socket.recv(1024).decode('utf-8')
-
+                    client_socket.send(b"ACK")
                     if data == "FOLDER_END":
                         print(f"Folder {folder_name} upload completed")
                         client_socket.send(f"Upload folder {folder_name} success".encode('utf-8'))
                         break
 
                     if data.startswith("file"):
-                        client_socket.send(b"ACK")
-
                         _, relative_path = data.split(" ", 1)
-                        file_path = os.path.join(folder_path, relative_path)
+                        file_path = os.path.join(new_folderpath, relative_path)
                         os.makedirs(os.path.dirname(file_path), exist_ok=True)  # Tạo lại cấu trúc thư mục
 
                         with open(file_path, 'wb') as f:
                             while True:
                                 data = client_socket.recv(1024)
                                 if data == b"END":
+                                    client_socket.send(b"ACK")
                                     break
                                 else:
                                     f.write(data)
