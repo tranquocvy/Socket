@@ -9,9 +9,9 @@ from tkinter import messagebox
 SERVER_HOST = '127.0.0.1'
 SERVER_PORT = 65432
 
-def upload_file(client_socket, filepath):
+def upload_file(client_socket, filepath,parent_window):
     if not os.path.exists(filepath):
-        messagebox.showerror("Lỗi", f"Path {filepath} not found")
+        messagebox.showerror("Lỗi", f"Path {filepath} not found",parent=parent_window)
         return
 
     filename = os.path.basename(filepath)
@@ -32,7 +32,7 @@ def upload_file(client_socket, filepath):
                 progress = (byte_sent/total_size)*100
                 print(f"\rUploading: {progress:.2f}% completed", end="")
         client_socket.send(b'END')
-        messagebox.showinfo("Thông báo", client_socket.recv(1024).decode('utf-8'))
+        messagebox.showinfo("Thông báo", client_socket.recv(1024).decode('utf-8'),parent=parent_window)
         
     elif os.path.isdir(filepath):
         client_socket.send(f"folder_upload {filename}".encode('utf-8'))
@@ -64,9 +64,9 @@ def upload_file(client_socket, filepath):
 
         client_socket.send(b'FOLDER_END')
         client_socket.recv(1024)
-        messagebox("Thông báo!",client_socket.recv(1024).decode('utf-8'))
+        messagebox.showinfo("Thông báo!",client_socket.recv(1024).decode('utf-8'),parent=parent_window)
 
-def download_file(client_socket, filename):
+def download_file(client_socket, filename, download_path,parent_window):
     client_socket.send(f"download {filename}".encode())
     response = client_socket.recv(1024).decode()
    
@@ -74,7 +74,6 @@ def download_file(client_socket, filename):
         #Lấy kích thước file do bên server gửi về 
         _, file_size = response.split(" ")
         file_size = int(file_size)
-        download_path = input("Nhap duong dan:  ")
         if not os.path.isdir(download_path):
             os.makedirs(download_path)
         filename = os.path.basename(filename)
@@ -93,9 +92,9 @@ def download_file(client_socket, filename):
                     progress = (byte_received/file_size)*100
                     print(f"\rDownloading {filename}: {progress:.2f}% completed", end="")
 
-        messagebox.showinfo("Thông báo",f"File {filename} downloaded successfully")
+        messagebox.showinfo("Thông báo",f"File {filename} downloaded successfully",parent=parent_window)
     else:
-        print(response)
+        messagebox.showinfo("Thông báo",response,parent=parent_window)
 
 def main():
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -130,59 +129,146 @@ def main():
         Label(root, text=address_client, font=('Cambria', 12), fg='blue').grid(row=3, column=1, sticky='w', padx=10)
 
         # Hàm chọn đường dẫn cho nút "Browse"
-        def browse_upload():
-            # Mở hộp thoại chọn tệp hoặc thư mục với tùy chọn cho phép chọn cả hai
-            file_or_folder = filedialog.askopenfilename(title="Chọn tệp hoặc thư mục để upload", 
-                                                        filetypes=[("All files", "*.*")])  # Chọn tệp
+        def browse_upload(upload):
+            # Mở hộp thoại chọn tệp
+            file_path = filedialog.askopenfilename(title="Chọn tệp để upload", filetypes=[("All files", "*.*")])  # Chọn tệp bất kỳ
             
-            if not file_or_folder:  # Nếu không chọn tệp (chưa chọn hoặc nhấn "Cancel"), thử chọn thư mục
-                file_or_folder = filedialog.askdirectory(title="Chọn thư mục để upload")  # Chọn thư mục
+            if file_path:  # Nếu có chọn tệp
+                upload.delete(0, END)  # Xóa nội dung cũ
+                upload.insert(0, file_path)  # Điền đường dẫn của tệp vào ô nhập
 
-            if file_or_folder:  # Nếu có lựa chọn (tệp hoặc thư mục)
-                upload_entry.delete(0, END)  # Xóa nội dung cũ
-                upload_entry.insert(0, file_or_folder)  # Điền đường dẫn vào ô nhập
+        def browse_upload_folder(upload):
+            # Mở hộp thoại chọn thư mục
+            folder_path = filedialog.askdirectory(title="Chọn thư mục để upload")  # Chọn thư mục
+            
+            if folder_path:  # Nếu có chọn thư mục
+                upload.delete(0, END)  # Xóa nội dung cũ
+                upload.insert(0, folder_path)  # Điền đường dẫn của thư mục vào ô nhập
 
-        def browse_download():
-            folderpath = filedialog.askdirectory(title="Chọn thư mục để lưu")
+        def browse_download(download):
+            file_path = filedialog.askopenfilename(title="Chọn tệp để download", filetypes=[("All files", "*.*")])
+            if file_path:
+                download.delete(0, END)  # Xóa nội dung cũ
+                download.insert(0, file_path)  # Điền đường dẫn mới vào ô nhập
+
+        def browse_download_folder(download):
+            folder_path = filedialog.askdirectory(title="Chọn thư mục để download")
+            if folder_path:
+                download.delete(0, END)  # Xóa nội dung cũ
+                download.insert(0, folder_path)  # Điền đường dẫn mới vào ô nhập
+
+        def browse_download_path(download):
+            folderpath = filedialog.askdirectory(title="Chọn thư mục lưu file")
             if folderpath:
-                download_entry.delete(0, END)  # Xóa nội dung cũ
-                download_entry.insert(0, folderpath)  # Điền đường dẫn mới vào ô nhập
+                download.delete(0, END)  # Chỉnh sửa ô download path
+                download.insert(0, folderpath)
 
         # Nút Upload và ô text bên cạnh
-        def upload_action():
-            filepath = upload_entry.get()  # Lấy dữ liệu từ ô Entry
-            upload_file(client_socket, filepath)  # Thao tác với dữ liệu (ở đây là in ra)
-
-        upload_button = Button(root, text="Upload", font=('Cambria', 12), command=upload_action)
-        upload_button.grid(row=4, column=0, padx=10, pady=10)
-
-        upload_entry = Entry(root, font=('Cambria', 12))
-        upload_entry.grid(row=4, column=1, padx=10, pady=10)
-
-        upload_browse = Button(root, text="Browse", font=('Cambria', 10), command=browse_upload)
-        upload_browse.grid(row=4, column=2, padx=10, pady=10)
+        def upload_action(upload,parent):
+            filepath = upload.get()  # Lấy dữ liệu từ ô Entry
+            upload_file(client_socket, filepath, parent)  # Thao tác với dữ liệu (ở đây là in ra)
 
         # Nút Download và ô text bên cạnh
-        def download_action():
-            filename = download_entry.get()  # Lấy dữ liệu từ ô Entry
-            download_file(client_socket, filename)  # Thao tác với dữ liệu (ở đây là in ra)
+        def download_action(download, download_path,parent):
+            # Kiểm tra xem người dùng đã nhập đường dẫn tải về hay chưa
+            if not download_path.get():  # Nếu ô download_path trống
+                messagebox.showerror("Lỗi", "Please select a download path.")
+                return  # Không thực hiện tiếp tục nếu chưa chọn đường dẫn
+            filename = download.get()  # Lấy dữ liệu từ ô Entry
+            download_file(client_socket, filename, download_path.get(),parent)  # Thao tác với dữ liệu (ở đây là in ra)
 
-        download_button = Button(root, text="Download", font=('Cambria', 12), command=download_action)
-        download_button.grid(row=5, column=0, padx=10, pady=10)
+        # Nút Upload
+        def on_upload():
+                root.withdraw()  
+                new_window = Toplevel(root)  # Tạo cửa sổ con mới
+                new_window.title("Upload")  # Đặt tiêu đề cho cửa sổ con
+                new_window.geometry("800x400")  # Kích thước cửa sổ con
+                Label(new_window, text="Upload", font=("Cambria", 14)).grid(row=0, column=0, columnspan=3, pady=20)
+                # upload file
+                upload_button = Button(new_window, text="Upload file", font=('Cambria', 12), command=lambda:upload_action(upload_entry,new_window))
+                upload_button.grid(row=1, column=0, padx=10, pady=10)
 
-        download_entry = Entry(root, font=('Cambria', 12))
-        download_entry.grid(row=5, column=1, padx=10, pady=10)
+                upload_entry = Entry(new_window, width=40, font=('Cambria', 12))
+                upload_entry.grid(row=1, column=1, padx=10, pady=10)
 
-        download_browse = Button(root, text="Browse", font=('Cambria', 10), command=browse_download)
-        download_browse.grid(row=5, column=2, padx=10, pady=10)
+                upload_browse = Button(new_window, text="Browse", font=('Cambria', 10), command=lambda:browse_upload(upload_entry))
+                upload_browse.grid(row=1, column=2, padx=10, pady=10)
 
-        # Nút Exit
+                # upload folder
+                upload_button_folder = Button(new_window, text="Upload folder", font=('Cambria', 12), command=lambda:upload_action(upload_entry_folder,new_window))
+                upload_button_folder.grid(row=2, column=0, padx=10, pady=10)
+
+                upload_entry_folder = Entry(new_window, width=40, font=('Cambria', 12))
+                upload_entry_folder.grid(row=2, column=1, padx=10, pady=10)
+
+                upload_browse_folder = Button(new_window, text="Browse", font=('Cambria', 10), command=lambda:browse_upload_folder(upload_entry_folder))
+                upload_browse_folder.grid(row=2, column=2, padx=10, pady=10)
+
+                # Nút Close
+                def on_close():
+                    root.deiconify()  # Hiển thị lại cửa sổ chính (root)
+                    new_window.destroy()  # Đóng cửa sổ con
+                Button(new_window, text="Close", command=on_close).grid(row=5, column=1, pady=20)
+                new_window.protocol("WM_DELETE_WINDOW", on_close)
+
+        upload_button = Button(root, text="Upload", font=('Cambria', 12), command=on_upload)
+        upload_button.grid(row=5, column=1, sticky='e', padx=10, pady=20)
+
+        # Nút Download
+        def on_download():
+                root.withdraw()  
+                new_window = Toplevel(root)  # Tạo cửa sổ con mới
+                new_window.title("Download")  # Đặt tiêu đề cho cửa sổ con
+                new_window.geometry("800x400")  # Kích thước cửa sổ con
+                Label(new_window, text="Download", font=("Cambria", 14)).grid(row=0, column=0, columnspan=3, pady=20)
+                
+                # Đường dẫn lưu file sau khi tải về
+                download_path_label = Label(new_window, text="Download path:", font=("Cambria", 12))
+                download_path_label.grid(row=2, column=0, padx=10, pady=5, sticky=W)
+
+                download_path_entry = Entry(new_window, width=40, font=("Cambria", 12))
+                download_path_entry.grid(row=2, column=1, padx=5, pady=5)
+
+                download_path_browse = Button(new_window, text="Browse", font=('Cambria', 10), command=lambda:browse_download_path(download_path_entry))
+                download_path_browse.grid(row=2, column=2, padx=5, pady=5)               
+               
+                # download file
+                download_button = Button(new_window, text="Download file", font=('Cambria', 12), command=lambda:download_action(download_entry,download_path_entry,new_window))
+                download_button.grid(row=3, column=0, padx=10, pady=10)
+
+                download_entry = Entry(new_window, width=40, font=('Cambria', 12))
+                download_entry.grid(row=3, column=1, padx=10, pady=10)  
+
+                download_browse = Button(new_window, text="Browse", font=('Cambria', 10), command=lambda:browse_download(download_entry))
+                download_browse.grid(row=3, column=2, padx=10, pady=10)
+
+                # download folder
+                download_button_folder = Button(new_window, text="Download folder", font=('Cambria', 12), command=lambda:download_action(download_entry_folder,download_path_entry,new_window))
+                download_button_folder.grid(row=4, column=0, padx=10, pady=10)
+
+                download_entry_folder = Entry(new_window, width=40, font=('Cambria', 12))
+                download_entry_folder.grid(row=4, column=1, padx=10, pady=10)
+
+                download_browse_folder = Button(new_window, text="Browse", font=('Cambria', 10), command=lambda:browse_download_folder(download_entry_folder))
+                download_browse_folder.grid(row=4, column=2, padx=10, pady=10)
+
+                # Nút Close
+                def on_close():
+                    root.deiconify()  # Hiển thị lại cửa sổ chính (root)
+                    new_window.destroy()  # Đóng cửa sổ con
+                Button(new_window, text="Close", command=on_close).grid(row=5, column=1, pady=20)
+                new_window.protocol("WM_DELETE_WINDOW", on_close)
+
+        download_button = Button(root, text="Download", font=('Cambria', 12), command=on_download)
+        download_button.grid(row=6, column=1, sticky='e', padx=10, pady=20)
+
+        # Nút exit
         def on_exit():
-            messagebox.showinfo('Thông báo','Disconnect from server')
-            exit()
-
+            result = messagebox.askquestion("Xác nhận thoát", "Disconnect from server?")
+            if result == "yes":
+                exit()
         exit_button = Button(root, text="Exit", font=('Cambria', 12), command=on_exit)
-        exit_button.grid(row=6, column=1, sticky='e', padx=10, pady=20)
+        exit_button.grid(row=7, column=1, sticky='e', padx=10, pady=20)
 
         # Chạy vòng lặp chính
         root.mainloop()
