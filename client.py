@@ -102,6 +102,14 @@ def main():
     ip_address = client_socket.getsockname()[1]  # Lấy địa chỉ IP của client
     print("Connected to server")
 
+    # Gửi mã pin
+    client_socket.send(f"1434".encode('utf-8'))
+    pin = client_socket.recv(1024).decode('utf-8')
+    if pin != "READY":
+        client_socket.close()
+        print("PIN wrong!")
+        return
+
     try:
         # Tạo cửa sổ chính
         root = Tk()
@@ -172,7 +180,7 @@ def main():
         def download_action(download, download_path,parent):
             # Kiểm tra xem người dùng đã nhập đường dẫn tải về hay chưa
             if not download_path.get():  # Nếu ô download_path trống
-                messagebox.showerror("Lỗi", "Please select a download path.")
+                messagebox.showerror("Lỗi", "Please select a download path")
                 return  # Không thực hiện tiếp tục nếu chưa chọn đường dẫn
             filename = download.get()  # Lấy dữ liệu từ ô Entry
             download_file(client_socket, filename, download_path.get(),parent)  # Thao tác với dữ liệu (ở đây là in ra)
