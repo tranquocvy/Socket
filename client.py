@@ -76,8 +76,14 @@ def download_file(client_socket, filename, download_path,parent_window):
         file_size = int(file_size)
         if not os.path.isdir(download_path):
             os.makedirs(download_path)
-        filename = os.path.basename(filename)
-        file_path = os.path.join(download_path, filename)
+        if(os.path.isfile(filename)):
+            filename = os.path.basename(filename)
+            file_path = os.path.join(download_path, filename)
+        else:
+            filename = f"{filename}.zip"
+            filename = os.path.basename(filename)
+            file_path = os.path.join(download_path, filename)
+
 
         byte_received = 0
         with open(file_path, 'wb') as f:
@@ -91,8 +97,13 @@ def download_file(client_socket, filename, download_path,parent_window):
                     byte_received += len(data)
                     progress = (byte_received/file_size)*100
                     print(f"\rDownloading {filename}: {progress:.2f}% completed", end="")
-
-        messagebox.showinfo("Thông báo",f"File {filename} downloaded successfully",parent=parent_window)
+        def is_zip_file(filepath):
+         # Kiểm tra phần mở rộng của file
+            return os.path.splitext(filepath)[1].lower() == '.zip'
+        if is_zip_file(file_path):
+            messagebox.showinfo("Thông báo",f"Folder {filename} downloaded successfully",parent=parent_window)
+        else:
+            messagebox.showinfo("Thông báo",f"File {filename} downloaded successfully",parent=parent_window)
     else:
         messagebox.showinfo("Thông báo",response,parent=parent_window)
 
@@ -103,11 +114,12 @@ def main():
     print("Connected to server")
 
     # Gửi mã pin
-    client_socket.send(f"1434".encode('utf-8'))
+    client_socket.send(f"1234".encode('utf-8'))
     pin = client_socket.recv(1024).decode('utf-8')
     if pin != "READY":
         client_socket.close()
         print("PIN wrong!")
+        time.sleep(10)
         return
 
     try:
