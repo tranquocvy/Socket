@@ -4,11 +4,8 @@ import threading
 import time
 import datetime
 import shutil
-import signal
-import sys
 from tkinter import *
 from tkinter import messagebox
-import atexit
 #Cấu hình server
 HOST = "127.0.0.1"
 PORT = 65432
@@ -23,17 +20,18 @@ def handle_client(client_socket, address, logs):
     formatted_datetime = datetime.datetime.now().strftime("[%H.%M.%S]")
     logs.write(f"{formatted_datetime} [{address}] Client connected: {address}\n")
     print(f"Client connected: {address}")
+
+    # Nhận mã pin
+    pin = client_socket.recv(1024).decode('utf-8')
+    with open(PIN_PATH,'r') as readPin:
+        client_pin = readPin.read()
+    if pin == client_pin:
+        client_socket.send(f"READY".encode('utf-8'))
+    else:
+        client_socket.send(f"NO".encode('utf-8'))
+
     try:
         while True:
-            # # Nhận mã pin
-            # pin = client_socket.recv(1024).decode('utf-8')
-            # with open(PIN_PATH,'r') as readPin:
-            #     client_pin = readPin.read()
-            # if pin == client_pin:
-            #     client_socket.send(f"READY".encode('utf-8'))
-            # else:
-            #     client_socket.send(f"NO".encode('utf-8'))
-
             # Nhận lệnh từ client
             command = client_socket.recv(1024).decode()
             if not command:
@@ -151,67 +149,28 @@ def handle_client(client_socket, address, logs):
         logs.write(f"{formatted_datetime} [{address}] Client disconnected: {address}\n")
         client_socket.close()
 
-def cleanup():
-    global server, logs
-    if server:
-        server.close()
-        print("Server closed.")
-    if logs:
-        logs.close()
-        print("Log file closed.")
-
-# def main():
-#     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#     server.bind((HOST, PORT))
-#     server.listen(5)
-
-#     formatted_datetime = datetime.datetime.now().strftime("%H.%M.%S_%d.%m.%Y")
-#     filelogs=f"{LOG_DIR}/{formatted_datetime}.txt"
-
-#     with open(filelogs,'w') as logs:
-#         formatted_datetime = datetime.datetime.now().strftime("[%H.%M.%S]")
-#         logs.write(f"{formatted_datetime} [Server] Server running on {HOST}:{PORT}\n")
-#         print(f"Server running on {HOST}:{PORT}")
-#         try:
-#             while True:
-#                 client_socket, address = server.accept()
-#                 threading.Thread(target=handle_client, args=(client_socket, address, logs)).start()   
-#         except KeyboardInterrupt:
-#             logs.close()
-#             server.close()
-#         finally:
-#             server.close()
-#             logs.close()
-#             print("Server close")
-# if __name__ == "__main__":
-#     main()
-
 def main():
-    global server, logs
-    atexit.register(cleanup)
-
-    # Tạo socket server
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind((HOST, PORT))
     server.listen(5)
 
-    if not os.path.exists(LOG_DIR):
-        os.makedirs(LOG_DIR)
-
     formatted_datetime = datetime.datetime.now().strftime("%H.%M.%S_%d.%m.%Y")
-    filelogs = f"{LOG_DIR}/{formatted_datetime}.txt"
+    filelogs=f"{LOG_DIR}/{formatted_datetime}.txt"
 
-    logs = open(filelogs, 'w')
-    formatted_datetime = datetime.datetime.now().strftime("[%H.%M.%S]")
-    logs.write(f"{formatted_datetime} [Server] Server running on {HOST}:{PORT}\n")
-    print(f"Server running on {HOST}:{PORT}")
-
-    try:
-        while True:
-            client_socket, address = server.accept()
-            threading.Thread(target=handle_client, args=(client_socket, address, logs)).start()
-    except KeyboardInterrupt:
-        print("KeyboardInterrupt detected. Cleaning up resources...")
-
+    with open(filelogs,'w') as logs:
+        formatted_datetime = datetime.datetime.now().strftime("[%H.%M.%S]")
+        logs.write(f"{formatted_datetime} [Server] Server running on {HOST}:{PORT}\n")
+        print(f"Server running on {HOST}:{PORT}")
+        try:
+            while True:
+                client_socket, address = server.accept()
+                threading.Thread(target=handle_client, args=(client_socket, address, logs)).start()   
+        except KeyboardInterrupt:
+            logs.close()
+            server.close()
+        finally:
+            server.close()
+            logs.close()
+            print("Server close")
 if __name__ == "__main__":
     main()

@@ -9,6 +9,8 @@ from tkinter import ttk
 # Cấu hình client
 SERVER_HOST = '127.0.0.1'
 SERVER_PORT = 65432
+IP_ADDRESS = 1
+
 def update_progress_bar(progress_bar, value):
     progress_bar['value'] = value
     progress_bar.update_idletasks()
@@ -188,44 +190,44 @@ def download_action(client_socket,download, download_path,parent):
 
 # Cửa sổ Upload
 def on_upload(root,client_socket):
-        root.withdraw()  
-        new_window = Toplevel(root)  # Tạo cửa sổ con mới
-        new_window.title("Upload")  # Đặt tiêu đề cho cửa sổ con
-        new_window.geometry("610x250")  # Kích thước cửa sổ con
-        Label(new_window, text='Upload', fg='red', font=('Cambria', 16), width=20).grid(row=0, column=0, columnspan=3, pady=20, sticky='n')
+    root.withdraw()  
+    new_window = Toplevel(root)  # Tạo cửa sổ con mới
+    new_window.title("Upload")  # Đặt tiêu đề cho cửa sổ con
+    new_window.geometry("610x250")  # Kích thước cửa sổ con
+    Label(new_window, text='Upload', fg='white', bg = 'blue', font=('Cambria', 16), width=20).grid(row=0, column=0, columnspan=3, pady=20, sticky='n')
 
-        # upload file
-        upload_button = Button(new_window, text="Upload file", font=('Cambria', 12), command=lambda:upload_action(client_socket,upload_entry,new_window))
-        upload_button.grid(row=1, column=0, padx=10, pady=10)
+    # upload file
+    upload_button = Button(new_window, text="Upload file", font=('Cambria', 12), fg = 'white', bg = 'blue', command=lambda:upload_action(client_socket,upload_entry,new_window))
+    upload_button.grid(row=1, column=0, padx=10, pady=10)
 
-        upload_entry = Entry(new_window, width=40, font=('Cambria', 12))
-        upload_entry.grid(row=1, column=1, padx=10, pady=10)
+    upload_entry = Entry(new_window, width=40, font=('Cambria', 12))
+    upload_entry.grid(row=1, column=1, padx=10, pady=10)
 
-        upload_browse = Button(new_window, text="Browse", font=('Cambria', 10), command=lambda:browse_upload(upload_entry))
-        upload_browse.grid(row=1, column=2, padx=10, pady=10)
+    upload_browse = Button(new_window, text="Browse", font=('Cambria', 10), fg = 'white', bg = 'blue', command=lambda:browse_upload(upload_entry))
+    upload_browse.grid(row=1, column=2, padx=10, pady=10)
 
-        # upload folder
-        upload_button_folder = Button(new_window, text="Upload folder", font=('Cambria', 12), command=lambda:upload_action(client_socket,upload_entry_folder,new_window))
-        upload_button_folder.grid(row=2, column=0, padx=10, pady=10)
+    # upload folder
+    upload_button_folder = Button(new_window, text="Upload folder", font=('Cambria', 12), fg = 'white', bg = 'blue', command=lambda:upload_action(client_socket,upload_entry_folder,new_window))
+    upload_button_folder.grid(row=2, column=0, padx=10, pady=10)
 
-        upload_entry_folder = Entry(new_window, width=40, font=('Cambria', 12))
-        upload_entry_folder.grid(row=2, column=1, padx=10, pady=10)
+    upload_entry_folder = Entry(new_window, width=40, font=('Cambria', 12))
+    upload_entry_folder.grid(row=2, column=1, padx=10, pady=10)
 
-        upload_browse_folder = Button(new_window, text="Browse", font=('Cambria', 10), command=lambda:browse_upload_folder(upload_entry_folder))
-        upload_browse_folder.grid(row=2, column=2, padx=10, pady=10)
+    upload_browse_folder = Button(new_window, text="Browse", font=('Cambria', 10), fg = 'white', bg = 'blue', command=lambda:browse_upload_folder(upload_entry_folder))
+    upload_browse_folder.grid(row=2, column=2, padx=10, pady=10)
 
-        # Nút Close
-        def on_close():
-            root.deiconify()  # Hiển thị lại cửa sổ chính (root)
-            new_window.destroy()  # Đóng cửa sổ con
-        Button(new_window, text="Close", font=('Cambria', 12), command=on_close).grid(row=5, column=0, columnspan=3, pady=20)
+    # Nút Close
+    def on_close():
+        root.deiconify()  # Hiển thị lại cửa sổ chính (root)
+        new_window.destroy()  # Đóng cửa sổ con
+    Button(new_window, text="Close", font=('Cambria', 12), command=on_close).grid(row=5, column=0, columnspan=3, pady=20)
 
-        # Cấu hình cột để căn giữa
-        new_window.grid_columnconfigure(0, weight=1)  # Cột trái
-        new_window.grid_columnconfigure(1, weight=1)  # Cột giữa
-        new_window.grid_columnconfigure(2, weight=1)  # Cột phải
+    # Cấu hình cột để căn giữa
+    new_window.grid_columnconfigure(0, weight=1)  # Cột trái
+    new_window.grid_columnconfigure(1, weight=1)  # Cột giữa
+    new_window.grid_columnconfigure(2, weight=1)  # Cột phải
 
-        new_window.protocol("WM_DELETE_WINDOW", on_close)
+    new_window.protocol("WM_DELETE_WINDOW", on_close)
 
 # Cửa sổ Download
 def on_download(root,client_socket):
@@ -234,43 +236,43 @@ def on_download(root,client_socket):
         new_window.title("Download")  # Đặt tiêu đề cho cửa sổ con
         new_window.geometry("610x280")  # Kích thước cửa sổ con
         new_window.configure(bg='#B6C99B')
-        Label(new_window, text="Download", fg='red', font=('Cambria', 16), width=20).grid(row=0, column=0, columnspan=3, pady=20, sticky='n')
+        Label(new_window, text="Download", fg='white', bg = 'blue', font=('Cambria', 16), width=20).grid(row=0, column=0, columnspan=3, pady=20, sticky='n')
         
         # Đường dẫn lưu file sau khi tải về
-        download_path_label = Label(new_window, text="Download path:", font=("Cambria", 12))
+        download_path_label = Label(new_window, text="Download path:", font=("Cambria", 12), fg = 'white', bg = 'blue')
         download_path_label.grid(row=2, column=0, padx=10, pady=5, sticky=W)
 
         download_path_entry = Entry(new_window, width=40, font=("Cambria", 12))
         download_path_entry.grid(row=2, column=1, padx=5, pady=5)
 
-        download_path_browse = Button(new_window, text="Browse", font=('Cambria', 10), command=lambda:browse_download_path(download_path_entry))
+        download_path_browse = Button(new_window, text="Browse", font=('Cambria', 10), fg = 'white', bg = 'blue', command=lambda:browse_download_path(download_path_entry))
         download_path_browse.grid(row=2, column=2, padx=5, pady=5)               
         
         # Nút download file
-        download_button = Button(new_window, text="Download file", font=('Cambria', 12), command=lambda:download_action(client_socket,download_entry,download_path_entry,new_window))
+        download_button = Button(new_window, text="Download file", font=('Cambria', 12), fg = 'white', bg = 'blue', command=lambda:download_action(client_socket,download_entry,download_path_entry,new_window))
         download_button.grid(row=3, column=0, padx=10, pady=10)
 
         download_entry = Entry(new_window, width=40, font=('Cambria', 12))
         download_entry.grid(row=3, column=1, padx=10, pady=10)  
 
-        download_browse = Button(new_window, text="Browse", font=('Cambria', 10), command=lambda:browse_download(download_entry))
+        download_browse = Button(new_window, text="Browse", font=('Cambria', 10), fg = 'white', bg = 'blue', command=lambda:browse_download(download_entry))
         download_browse.grid(row=3, column=2, padx=10, pady=10)
 
         # Nút download folder
-        download_button_folder = Button(new_window, text="Download folder", font=('Cambria', 12), command=lambda:download_action(client_socket,download_entry_folder,download_path_entry,new_window))
+        download_button_folder = Button(new_window, text="Download folder", font=('Cambria', 12), fg = 'white', bg = 'blue', command=lambda:download_action(client_socket,download_entry_folder,download_path_entry,new_window))
         download_button_folder.grid(row=4, column=0, padx=10, pady=10)
 
         download_entry_folder = Entry(new_window, width=40, font=('Cambria', 12))
         download_entry_folder.grid(row=4, column=1, padx=10, pady=10)
 
-        download_browse_folder = Button(new_window, text="Browse", font=('Cambria', 10), command=lambda:browse_download_folder(download_entry_folder))
+        download_browse_folder = Button(new_window, text="Browse", font=('Cambria', 10), fg = 'white', bg = 'blue', command=lambda:browse_download_folder(download_entry_folder))
         download_browse_folder.grid(row=4, column=2, padx=10, pady=10)
 
         # Nút Close
         def on_close():
             root.deiconify()  # Hiển thị lại cửa sổ chính (root)
             new_window.destroy()  # Đóng cửa sổ con
-        Button(new_window, text="Close", font=('Cambria', 12), command=on_close).grid(row=5, column=0, columnspan=3, pady=20)
+        Button(new_window, text="Close", font=('Cambria', 12), fg = 'white', bg = 'blue', command=on_close).grid(row=5, column=0, columnspan=3, pady=20)
 
 
         # Cấu hình cột để căn giữa
@@ -287,69 +289,83 @@ def on_exit():
         exit()
 
 #Check pin
-# def check_pin(root,client_socket):
+def main_root(pin_root, pin_entry, client_socket):
+    # Gửi mã pin
+    client_socket.send(f"{pin_entry.get()}".encode('utf-8'))
+    pin = client_socket.recv(1024).decode('utf-8')
+    if pin != "READY":
+        messagebox.showerror("Lỗi", "PIN wrong!")
+        client_socket.close()
+        print("PIN wrong!")
+        time.sleep(1)
+        pin_root.quit()  # Dừng vòng lặp và đóng cửa sổ chính
+        return
 
+    # Ẩn cửa sổ chính
+    pin_root.withdraw()
+
+    # Tạo cửa sổ con mới
+    root = Toplevel(pin_root)  # Tạo cửa sổ con từ pin_root
+    root.title('TCP/IP')  # Đặt tiêu đề cho cửa sổ con
+    root.geometry("500x250")  # Kích thước cửa sổ con
+    root.configure(bg='#B6C99B')
+
+    # Hiển thị thông tin
+    Label(root, text='Socket', fg='red', font=('Cambria', 16), width=20).grid(row=0, column=0, columnspan=3, pady=20, sticky='n')
+    Label(root, text="Server Host:", font=('Cambria', 12)).grid(row=1, column=0, sticky='w', padx=10)
+    Label(root, text=SERVER_HOST, font=('Cambria', 12), fg='blue').grid(row=1, column=1, sticky='w', padx=10)
+    Label(root, text="Server Port:", font=('Cambria', 12)).grid(row=2, column=0, sticky='w', padx=10)
+    Label(root, text=SERVER_PORT, font=('Cambria', 12), fg='blue').grid(row=2, column=1, sticky='w', padx=10)
+    Label(root, text="Address Client:", font=('Cambria', 12)).grid(row=3, column=0, sticky='w', padx=10)
+    Label(root, text=IP_ADDRESS, font=('Cambria', 12), fg='blue').grid(row=3, column=1, sticky='w', padx=10)
+
+    # Nút upload
+    upload_button = Button(root, text="Upload", font=('Cambria', 12), fg = 'white', bg = 'blue', command=lambda: on_upload(root, client_socket))
+    upload_button.grid(row=5, column=0, padx=30, pady=20, sticky='ew')
+
+    # Nút download
+    download_button = Button(root, text="Download", font=('Cambria', 12), fg = 'white', bg = 'blue', command=lambda: on_download(root, client_socket))
+    download_button.grid(row=5, column=1, padx=30, pady=20, sticky='ew')
+
+    # Nút exit
+    exit_button = Button(root, text="Exit", font=('Cambria', 12), fg = 'white', bg = 'blue', command=on_exit)
+    exit_button.grid(row=5, column=2, padx=30, pady=20, sticky='ew')
+
+    # Đặt cấu hình lưới để các cột có kích thước đều
+    root.grid_columnconfigure(0, weight=1)
+    root.grid_columnconfigure(1, weight=1)
+    root.grid_columnconfigure(2, weight=1)
 
 def main():
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client_socket.connect((SERVER_HOST, SERVER_PORT))
-    ip_address = client_socket.getsockname()[1]  # Lấy địa chỉ IP của client
+    IP_ADDRESS = client_socket.getsockname()[1]  # Lấy địa chỉ IP của client
     print("Connected to server")
 
-    # # Gửi mã pin
-    # client_socket.send(f"1234".encode('utf-8'))
-    # pin = client_socket.recv(1024).decode('utf-8')
-    # if pin != "READY":
-    #     client_socket.close()
-    #     print("PIN wrong!")
-    #     time.sleep(10)
-    #     return
-
-    try:
+    try: 
         # Tạo cửa sổ chính
-        root = Tk()
-        root.title('TCP/IP')
-        root.minsize(height=250, width=500)
+        pin_root = Tk()
+        pin_root.title('TCP/IP')
+        pin_root.minsize(height=250, width=500)
+        pin_root.configure(bg='black')  # Màu nền của cửa sổ chính là đen
 
-        # Dữ liệu mẫu (có thể thay bằng dữ liệu thực)
-        server_host = SERVER_HOST
-        server_port = SERVER_PORT
-        address_client = ip_address
+        # Hiển thị tiêu đề "Pin"
+        Label(pin_root, text='PIN', fg='white', bg='black', font=('Cambria', 24), width=20).grid(row=0, column=0, columnspan=3, pady=20, sticky='n')
 
-        # Hiển thị tiêu đề "Socket"
-        Label(root, text='Socket', fg='red', font=('Cambria', 16), width=20).grid(row=0, column=0, columnspan=3, pady=20, sticky='n')
-        # Thông tin Server Host
-        Label(root, text="Server Host:", font=('Cambria', 12)).grid(row=1, column=0, sticky='w', padx=10)
-        Label(root, text=server_host, font=('Cambria', 12), fg='blue').grid(row=1, column=1, sticky='w', padx=10)
+        pin_entry = Entry(pin_root, width=40, font=('Cambria', 12), bg='gray', fg='white')  # Màu nền của Entry là xám, chữ trắng
+        pin_entry.grid(row=2, column=1, padx=10, pady=10)
 
-        # Thông tin Server Port
-        Label(root, text="Server Port:", font=('Cambria', 12)).grid(row=2, column=0, sticky='w', padx=10)
-        Label(root, text=server_port, font=('Cambria', 12), fg='blue').grid(row=2, column=1, sticky='w', padx=10)
-
-        # Thông tin Address Client
-        Label(root, text="Address Client:", font=('Cambria', 12)).grid(row=3, column=0, sticky='w', padx=10)
-        Label(root, text=address_client, font=('Cambria', 12), fg='blue').grid(row=3, column=1, sticky='w', padx=10)
-
-        # Nút upload
-        upload_button = Button(root, text="Upload", font=('Cambria', 12), command=lambda: on_upload(root, client_socket))
-        upload_button.grid(row=5, column=0, padx=30, pady=20, sticky='ew')
-
-        # Nút download
-        download_button = Button(root, text="Download", font=('Cambria', 12), command=lambda: on_download(root, client_socket))
-        download_button.grid(row=5, column=1, padx=30, pady=20, sticky='ew')
-
-        # Nút exit
-        exit_button = Button(root, text="Exit", font=('Cambria', 12), command=on_exit)
-        exit_button.grid(row=5, column=2, padx=30, pady=20, sticky='ew')
+        # Nút Verify (sử dụng padx để nút ngắn gọn và phù hợp với chữ)
+        pin_button = Button(pin_root, text="Verify", font=('Cambria', 12), command=lambda: main_root(pin_root, pin_entry, client_socket), 
+                            bg='green', fg='black', padx=20, pady=10)  # Điều chỉnh kích thước nút bằng padx, pady
+        pin_button.grid(row=3, column=1, pady=20, sticky='n')
 
         # Đặt cấu hình lưới để các cột có kích thước đều
-        root.grid_columnconfigure(0, weight=1)
-        root.grid_columnconfigure(1, weight=1)
-        root.grid_columnconfigure(2, weight=1)
+        pin_root.grid_columnconfigure(0, weight=1)
+        pin_root.grid_columnconfigure(1, weight=1)
+        pin_root.grid_columnconfigure(2, weight=1)
 
-        # Chạy vòng lặp chính
-        root.mainloop()
-                
+        pin_root.mainloop()  # Chạy vòng lặp chính của cửa sổ chính
     finally:
         client_socket.close()
         print("Disconnected from server")
