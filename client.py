@@ -6,14 +6,16 @@ import tkinter as tk
 from tkinter import filedialog
 from tkinter import messagebox
 from tkinter import ttk
+import sys
 # Cấu hình client
 SERVER_HOST = '127.0.0.1'
 SERVER_PORT = 65432
 IP_ADDRESS = 1
 
-def update_progress_bar(progress_bar, value):
+def update_progress_bar(progress_bar,label,value):
     progress_bar['value'] = value
     progress_bar.update_idletasks()
+    label.config(text=f"{value:.0f}%")
 
 def upload_file(client_socket, filepath,parent_window):
     if not os.path.exists(filepath):
@@ -34,6 +36,9 @@ def upload_file(client_socket, filepath,parent_window):
 
         progress_bar = ttk.Progressbar(progress_window, length=400, maximum=100, mode='determinate')
         progress_bar.pack(pady=10)
+
+        percent_label = tk.Label(progress_window, text="0%", font=("Helvetica", 10))
+        percent_label.pack()
         #Upload
         with open(filepath, 'rb') as f:
             while (data := f.read(1024)):
@@ -43,9 +48,10 @@ def upload_file(client_socket, filepath,parent_window):
                 byte_sent += len(data)
                 #Tính toán phần trăm và hiển thị tiến độ
                 progress = (byte_sent/total_size)*100
-                update_progress_bar(progress_bar, progress)
+                update_progress_bar(progress_bar, percent_label, progress)
                 progress_window.update()
         client_socket.send(b'END')
+        time.sleep(0.5)
         progress_window.destroy()
         messagebox.showinfo("Thông báo", client_socket.recv(1024).decode('utf-8'),parent=parent_window)
         
@@ -66,11 +72,14 @@ def upload_file(client_socket, filepath,parent_window):
                 byte_sent = 0
                 progress_window = tk.Toplevel(parent_window)
                 progress_window.title("Uploading File")
-                progress_label = tk.Label(progress_window, text=f"Uploading {filename}...")
+                progress_label = tk.Label(progress_window, text=f"Uploading {file}...")
                 progress_label.pack(pady=10)
 
                 progress_bar = ttk.Progressbar(progress_window, length=400, maximum=100, mode='determinate')
                 progress_bar.pack(pady=10)
+
+                percent_label = tk.Label(progress_window, text="0%", font=("Helvetica", 10))
+                percent_label.pack()
                 # Gửi nội dung file
                 with open(file_path, 'rb') as f:
                     while (data := f.read(1024)):
@@ -80,10 +89,12 @@ def upload_file(client_socket, filepath,parent_window):
                         byte_sent += len(data)
                         #Tính toán phần trăm và hiển thị tiến độ
                         progress = (byte_sent/total_size)*100
-                        update_progress_bar(progress_bar, progress)
+                        update_progress_bar(progress_bar, percent_label, progress)
                         progress_window.update()
                 client_socket.send(b'END')
                 ack=client_socket.recv(1024)
+
+                time.sleep(0.5)
                 progress_window.destroy()
         client_socket.send(b'FOLDER_END')
         client_socket.recv(1024)
@@ -115,6 +126,9 @@ def download_file(client_socket, filename, download_path,parent_window):
 
         progress_bar = ttk.Progressbar(progress_window, length=400, maximum=100, mode='determinate')
         progress_bar.pack(pady=10)
+
+        percent_label = tk.Label(progress_window, text="0%", font=("Helvetica", 10))
+        percent_label.pack()
         with open(file_path, 'wb') as f:
             while True:
                 data = client_socket.recv(1024)
@@ -125,8 +139,9 @@ def download_file(client_socket, filename, download_path,parent_window):
                     client_socket.send(b"ACK")
                     byte_received += len(data)
                     progress = (byte_received / file_size) * 100
-                    update_progress_bar(progress_bar, progress)
+                    update_progress_bar(progress_bar, percent_label, progress)
                     progress_window.update()
+        time.sleep(0.5)
         progress_window.destroy()
 
         def is_zip_file(filepath):
@@ -178,6 +193,7 @@ def browse_download_path(download):
 def upload_action(client_socket,upload,parent):
     filepath = upload.get()  # Lấy dữ liệu từ ô Entry
     upload_file(client_socket, filepath, parent)  # Thao tác với dữ liệu (ở đây là in ra)
+    upload.delete(0, 'end')
 
 # Nút Download và ô text bên cạnh
 def download_action(client_socket,download, download_path,parent):
@@ -185,8 +201,20 @@ def download_action(client_socket,download, download_path,parent):
     if not download_path.get():  # Nếu ô download_path trống
         messagebox.showerror("Lỗi", "Please select a download path")
         return  # Không thực hiện tiếp tục nếu chưa chọn đường dẫn
+    file_path = download_path.get()
+    while not os.path.isdir(file_path):
+        messagebox.showerror("Lỗi", "Download path wrong")
+        return  # Không thực hiện tiếp tục nếu chưa chọn đường dẫn
+    if not download.get():
+        messagebox.showerror("Lỗi", "Please select a download file/folder")
+        return
     filename = download.get()  # Lấy dữ liệu từ ô Entry
-    download_file(client_socket, filename, download_path.get(),parent)  # Thao tác với dữ liệu (ở đây là in ra) 
+    while not os.path.isfile(filename) and not os.path.isdir(filename) : 
+        messagebox.showerror("Lỗi", "Wrong path to file/folder")
+        return
+    download_file(client_socket, filename, file_path, parent)  # Thao tác với dữ liệu (ở đây là in ra) 
+    download.delete(0, 'end')  # Xóa dữ liệu trong ô Entry download
+    download_path.delete(0, 'end')  # Xóa dữ liệu trong ô Entry download_path
 
 # Cửa sổ Upload
 def on_upload(root,client_socket):
@@ -291,14 +319,19 @@ def on_exit():
 #Check pin
 def main_root(pin_root, pin_entry, client_socket):
     # Gửi mã pin
-    client_socket.send(f"{pin_entry.get()}".encode('utf-8'))
-    pin = client_socket.recv(1024).decode('utf-8')
-    if pin != "READY":
-        messagebox.showerror("Lỗi", "PIN wrong!")
-        client_socket.close()
-        print("PIN wrong!")
-        time.sleep(1)
-        pin_root.quit()  # Dừng vòng lặp và đóng cửa sổ chính
+    client_pin=pin_entry.get()
+    if client_pin:
+        client_socket.send(f"{pin_entry.get()}".encode('utf-8'))
+        pin = client_socket.recv(1024).decode('utf-8')
+        if pin != "READY":
+            messagebox.showerror("Lỗi", "PIN wrong!")
+            client_socket.close()
+            print("PIN wrong!")
+            time.sleep(1)
+            pin_root.quit()  # Dừng vòng lặp và đóng cửa sổ chính
+            return
+    else:
+        messagebox.showerror("Lỗi","Please enter the PIN")
         return
 
     # Ẩn cửa sổ chính
@@ -336,6 +369,13 @@ def main_root(pin_root, pin_entry, client_socket):
     root.grid_columnconfigure(1, weight=1)
     root.grid_columnconfigure(2, weight=1)
 
+    def on_close(root, client_socket):
+        client_socket.close()  # Đóng kết nối socket
+        root.destroy()  # Đóng cửa sổ
+        sys.exit()
+
+    root.protocol("WM_DELETE_WINDOW", lambda: on_close(root, client_socket))
+
 def main():
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client_socket.connect((SERVER_HOST, SERVER_PORT))
@@ -369,6 +409,7 @@ def main():
     finally:
         client_socket.close()
         print("Disconnected from server")
+        time.sleep(0.5)
 
 if __name__ == "__main__":
     main()
