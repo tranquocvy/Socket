@@ -113,11 +113,25 @@ def download_file(client_socket, filename, download_path,parent_window):
         if(os.path.isfile(filename)):
             filename = os.path.basename(filename)
             file_path = os.path.join(download_path, filename)
-        else:
+            if os.path.isfile(file_path):
+                basename, extension = os.path.splitext(filename)
+                counter = 1
+                while os.path.isfile(file_path):
+                    filename = f"{basename}({counter}){extension}"
+                    file_path = os.path.join(download_path, filename)
+                    counter+=1
+
+        elif(os.path.isdir(filename)):
             filename = f"{filename}.zip"
             filename = os.path.basename(filename)
             file_path = os.path.join(download_path, filename)
-
+            if os.path.isfile(file_path):
+                basename, extension = os.path.splitext(filename)
+                counter = 1
+                while os.path.isfile(file_path):
+                    filename = f"{basename}({counter}){extension}"
+                    file_path = os.path.join(download_path, filename)
+                    counter+=1
         byte_received = 0
         progress_window = tk.Toplevel(parent_window)
         progress_window.title("Downloading File")
