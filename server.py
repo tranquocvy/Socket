@@ -25,35 +25,38 @@ is_running = False
 def handle_client(client_socket, address, logs):
     formatted_datetime = datetime.datetime.now().strftime("[%H.%M.%S]")
     logs.write(f"{formatted_datetime} [{address}] Client connected: {address}\n")
-    print(f"Client connected: {address}")
 
-    # Nhận mã pin
+    # Nhận mã pin, check và gửi kết quả về cho client
     pin = client_socket.recv(1024).decode('utf-8')
+
     with open(PIN_PATH,'r') as readPin:
-        client_pin = readPin.read()
-    if pin == client_pin:
+        check_pin = readPin.read()
+    if pin == check_pin:
         formatted_datetime = datetime.datetime.now().strftime("[%H.%M.%S]")
         logs.write(f"{formatted_datetime} [{address}] PIN correct\n")
-        print("PIN correct")
+
         client_socket.send(f"READY".encode('utf-8'))
-    else:
+    else: # Client tự ngắt kết nối
         formatted_datetime = datetime.datetime.now().strftime("[%H.%M.%S]")
         logs.write(f"{formatted_datetime} [{address}] PIN wrong\n")
-        print("PIN wrong")
-        client_socket.send(f"NO".encode('utf-8'))
 
+        client_socket.send(f"NO".encode('utf-8'))
+    
     try:
         while True:
             # Nhận lệnh từ client
             command = client_socket.recv(1024).decode()
+
             if not command:
                 break
-            print(f"Received command: {command} from {address}")
             formatted_datetime = datetime.datetime.now().strftime("[%H.%M.%S]")
             logs.write(f"{formatted_datetime} [{address}] Received command: {command} from {address}\n")
 
             if command.startswith("upload"):
+                # Gửi 1 thông báo đến client: đã nhận được data, tiếp tục gửi data
                 client_socket.send(b'ACK')
+
+                #Vuong
                 _, filename = command.split(" ", 1)
                 filepath = os.path.join(STORAGE_DIR, filename)
                 basename, extension = os.path.splitext(filepath)
@@ -68,16 +71,17 @@ def handle_client(client_socket, address, logs):
                             break
                         else:
                             f.write(data)
+                            # Gửi 1 thông báo đến client: đã nhận được data, tiếp tục gửi data
                             client_socket.send(b"ACK")
 
-                print(f"File {filename} saved as {new_filepath}")
                 formatted_datetime = datetime.datetime.now().strftime("[%H.%M.%S]")
                 logs.write(f"{formatted_datetime} [{address}] File {filename} saved as {new_filepath}\n")
                 client_socket.send(f"Upload {filename} success".encode('utf-8'))
 
             elif command.startswith("folder_upload"):
+                # Gửi 1 thông báo đến client: đã nhận được data, tiếp tục gửi data
                 client_socket.send(b"ACK")
-
+                #Vuong
                 _, folder_name = command.split(" ", 1)
                 folderpath = os.path.join(STORAGE_DIR, folder_name)
                 basename, extension = os.path.splitext(folderpath)
@@ -88,11 +92,13 @@ def handle_client(client_socket, address, logs):
                 
                 while True:
                     data = client_socket.recv(1024).decode('utf-8')
+                    # Gửi 1 thông báo đến client: đã nhận được data, tiếp tục gửi data
                     client_socket.send(b"ACK")
+
                     if data == "FOLDER_END":
                         formatted_datetime = datetime.datetime.now().strftime("[%H.%M.%S]")
                         logs.write(f"{formatted_datetime} [{address}] Folder {folder_name} upload completed\n")
-                        print(f"Folder {folder_name} upload completed")
+
                         client_socket.send(f"Upload folder {folder_name} success".encode('utf-8'))
                         break
 
@@ -105,90 +111,102 @@ def handle_client(client_socket, address, logs):
                             while True:
                                 data = client_socket.recv(1024)
                                 if data == b"END":
+                                    # Gửi 1 thông báo đến client: đã nhận được data, tiếp tục gửi data
                                     client_socket.send(b"ACK")
                                     break
                                 else:
                                     f.write(data)
+                                    # Gửi 1 thông báo đến client: đã nhận được data, tiếp tục gửi data
                                     client_socket.send(b"ACK")
 
                         formatted_datetime = datetime.datetime.now().strftime("[%H.%M.%S]")
-                        print(f"File {relative_path} saved to {file_path}")
                         logs.write(f"{formatted_datetime} [{address}] File {relative_path} saved to {file_path}\n")
 
             elif command.startswith("download"):
                 _, filename = command.split(" ", 1)
                 filepath = os.path.join(STORAGE_DIR, filename)
+                #Vuong
                 if os.path.isfile(filepath):
                     if os.path.exists(filepath):
                         file_size = os.path.getsize(filepath)
                         client_socket.send(f"READY {file_size}".encode())
+
                         with open(filepath, 'rb') as f:
                             while (data := f.read(1024)):
                                 client_socket.send(data)
+
+                                # Nhận thông báo từ server: tiếc tục gửi data
                                 client_socket.recv(1024)
+
                         client_socket.send(b"END")
-                        print(f"File {filename} sent to {address}")
+
                         formatted_datetime = datetime.datetime.now().strftime("[%H.%M.%S]")
                         logs.write(f"{formatted_datetime} [Server] File {filename} sent to {address}\n")
                     else:
                         client_socket.send(f"Error: {filename} not found".encode())
-                elif os.path.isdir(filepath):
+
+                elif os.path.isdir(filepath): #Vuong
                     zip_filename = f"{filepath}.zip"
                     zip_filepath = os.path.join(STORAGE_DIR, zip_filename)
                     shutil.make_archive(zip_filepath.replace(".zip", ""), 'zip', filepath)
                     if os.path.exists(zip_filepath):
                         file_size = os.path.getsize(zip_filepath)
                         client_socket.send(f"READY {file_size}".encode())
+
                         with open(zip_filepath, 'rb') as f:
                             while (data := f.read(1024)):
                                 client_socket.send(data)
+
+                                # Nhận thông báo từ server: tiếc tục gửi data
                                 client_socket.recv(1024)
+                        # Thông báo kết thúc truyền file
                         client_socket.send(b"END")
-                        print(f"Folder {filename} sent as {zip_filename} to {address}")
+
                         formatted_datetime = datetime.datetime.now().strftime("[%H.%M.%S]")
                         logs.write(f"{formatted_datetime} [Server] Folder {filename} sent as {zip_filename} to {address}\n")
+                        #Vuong
                         os.remove(zip_filepath)
                     else:
                         client_socket.send(f"Error: {filename} not found".encode())
 
-    except Exception as e:
-        print(f"Error handling client {address}: {e}")
+    except Exception as e: #Vuong
         formatted_datetime = datetime.datetime.now().strftime("[%H.%M.%S]")
         logs.write(f"{formatted_datetime} [{address}] Error handling client {address}: {e}\n")
     finally:
-        print(f"Client disconnected: {address}")
         formatted_datetime = datetime.datetime.now().strftime("[%H.%M.%S]")
         logs.write(f"{formatted_datetime} [{address}] Client disconnected: {address}\n")
+
         client_socket.close()
 
 
-def accept_clients():
-    """Hàm chấp nhận client, chạy trên một thread riêng."""
-    global is_running
+def accept_clients(): # Accept client connect
+    global is_running # Dùng biến toàn cục đã khai báo
+
     formatted_datetime = datetime.datetime.now().strftime("%H.%M.%S_%d.%m.%Y")
     filelogs = f"{LOG_DIR}/{formatted_datetime}.txt"
-    with open(filelogs, 'w') as logs:
+
+    with open(filelogs, 'w') as logs: # Ghi logs
         formatted_datetime = datetime.datetime.now().strftime("[%H.%M.%S]")
         logs.write(f"{formatted_datetime} [Server] Server running on {HOST}:{PORT}\n")
-        print(f"Server running on {HOST}:{PORT}")
+
         try:
             while is_running:
                 client_socket, address = server_socket.accept()
                 threading.Thread(target=handle_client, args=(client_socket, address, logs)).start()
+
         except Exception as e:
             if is_running:
                 formatted_datetime = datetime.datetime.now().strftime("[%H.%M.%S]")
                 logs.write(f"{formatted_datetime} [Server] Error accepting client: {e}\n")
-                print(f"Error accepting client: {e}")
+
         finally:
             formatted_datetime = datetime.datetime.now().strftime("[%H.%M.%S]")
             logs.write(f"{formatted_datetime} [Server] Server stopped\n")
+
             logs.close()
-            print("Server stopped")
 
 def start_server(start_button, end_button):
-    """Hàm khởi động server."""
-    global server_socket, server_thread, is_running
+    global server_socket, server_thread, is_running # Dùng biến toàn cục đã khai báo
 
     if is_running:
         messagebox.showinfo("Info", "Server is already running!")
@@ -203,10 +221,10 @@ def start_server(start_button, end_button):
 
         # Chạy thread chấp nhận client
         server_thread = threading.Thread(target=accept_clients)
-        server_thread.daemon = True
-        server_thread.start()
+        server_thread.daemon = True #Vuong
+        server_thread.start()       #Vuong: t không biết giải thích cái deamon sao, cx kh hiểu lắm :))
 
-        # Cập nhật GUI
+        # Cập nhật nút của GUI
         start_button.config(state="disabled")
         end_button.config(state="normal")
         messagebox.showinfo("Server", "Server started successfully!")
@@ -216,9 +234,8 @@ def start_server(start_button, end_button):
 
 
 def end_server(start_button, end_button):
-    """Hàm dừng server."""
-    global server_socket, is_running
-
+    global server_socket, is_running # Dùng biến toàn cục đã khai báo
+ 
     if not is_running:
         messagebox.showinfo("Info", "Server is not running!")
         return
@@ -227,7 +244,7 @@ def end_server(start_button, end_button):
         is_running = False
         server_socket.close()
 
-        # Cập nhật GUI
+        # Cập nhật nút của GUI
         start_button.config(state="normal")
         end_button.config(state="disabled")
         messagebox.showinfo("Server", "Server stopped successfully!")
@@ -236,10 +253,12 @@ def end_server(start_button, end_button):
         messagebox.showerror("Error", f"Failed to stop server: {e}")
 
 def on_close(root):
-    global is_running
+    global is_running # Dùng biến toàn cục đã khai báo
+    #Vuong, hiểu đoạn dưới kh, t kh hiểu cái join
     if is_running:
         is_running = False
         server_socket.close()  # Đóng socket server
+
         # Đảm bảo thread chấp nhận client sẽ thoát
         server_thread.join()  # Chờ thread hoàn thành trước khi tắt
         time.sleep(1)
