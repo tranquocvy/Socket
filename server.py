@@ -21,7 +21,10 @@ os.makedirs(LOG_DIR, exist_ok=True)
 # Biến toàn cục
 server_socket = None
 server_thread = None
+logs = None
 is_running = False
+active_clients = [] # Lưu trữ các client đã kết nối
+client_threads = []
 
 # Upload file
 def upload_action(client_socket, address, command, logs):
@@ -159,6 +162,11 @@ def download_action(client_socket, address, command, logs):
 
 # handle
 def handle_client(client_socket, address, logs):
+    global active_clients # Lưu trữ client
+
+    # Thêm socket vào
+    active_clients.append(client_socket)
+
     formatted_datetime = datetime.datetime.now().strftime("[%H.%M.%S]")
     logs.write(f"{formatted_datetime} [{address}] Client connected: {address}\n")
 
@@ -171,7 +179,7 @@ def handle_client(client_socket, address, logs):
         formatted_datetime = datetime.datetime.now().strftime("[%H.%M.%S]")
         logs.write(f"{formatted_datetime} [{address}] Client disconnected: {address}\n")
 
-        client_socket.close()
+        client_socket.shutdown(socket.SHUT_RDWR) # Dừng recv và send
         return
 
     with open(PIN_PATH,'r') as readPin:
@@ -217,17 +225,20 @@ def handle_client(client_socket, address, logs):
                 break;
 
     except Exception as e: # Nếu có lỗi exception xảy thì đóng kết nối
-        formatted_datetime = datetime.datetime.now().strftime("[%H.%M.%S]")
-        logs.write(f"{formatted_datetime} [{address}] Error handling: {e}\n")
+        if is_running:
+            formatted_datetime = datetime.datetime.now().strftime("[%H.%M.%S]")
+            logs.write(f"{formatted_datetime} [{address}] Error handling: {e}\n")
     finally:
         formatted_datetime = datetime.datetime.now().strftime("[%H.%M.%S]")
         logs.write(f"{formatted_datetime} [{address}] Client disconnected: {address}\n")
 
-        client_socket.close()
-
+        if client_socket in active_clients:
+            active_clients.remove(client_socket) # Xóa client ra khỏi list client
+        if client_socket:
+            client_socket.close()
 
 def accept_clients(): # Accept client connect
-    global is_running # Dùng biến toàn cục đã khai báo
+    global is_running, logs, client_threads # Dùng biến toàn cục đã khai báo
 
     formatted_datetime = datetime.datetime.now().strftime("%H.%M.%S_%d.%m.%Y")
     filelogs = f"{LOG_DIR}/{formatted_datetime}.txt"
@@ -239,8 +250,13 @@ def accept_clients(): # Accept client connect
 
         try:
             while is_running:
-                client_socket, address = server_socket.accept()
-                threading.Thread(target=handle_client, args=(client_socket, address, logs)).start()
+                try:
+                    client_socket, address = server_socket.accept()
+                    thread = threading.Thread(target = handle_client, args=(client_socket, address, logs))
+                    thread.start()
+                    client_threads.append(thread) # Lưu lại thread đang chạy
+                except OSError:
+                    break
 
         except Exception as e:
             if is_running:
@@ -250,8 +266,6 @@ def accept_clients(): # Accept client connect
         finally:
             formatted_datetime = datetime.datetime.now().strftime("[%H.%M.%S]")
             logs.write(f"{formatted_datetime} [Server] Server stopped\n")
-
-            logs.close()
 
 def start_server(start_button, end_button):
     global server_socket, server_thread, is_running # Dùng biến toàn cục đã khai báo
@@ -268,8 +282,8 @@ def start_server(start_button, end_button):
         is_running = True
 
         # Chạy thread chấp nhận client
-        server_thread = threading.Thread(target=accept_clients)
-        server_thread.daemon = True # Đặt trạng thái daemon cho socket
+        server_thread = threading.Thread(target = accept_clients)
+        server_thread.daemon = True # Đặt trạng thái daemon cho socket -> luồng nền
         server_thread.start()       # Bắt đầu thread
 
         # Cập nhật nút của GUI
@@ -283,6 +297,7 @@ def start_server(start_button, end_button):
 
 def end_server(start_button, end_button):
     global server_socket, is_running # Dùng biến toàn cục đã khai báo
+    global active_clients, logs, client_threads
  
     if not is_running:
         messagebox.showinfo("Info", "Server is not running!")
@@ -290,7 +305,27 @@ def end_server(start_button, end_button):
 
     try:
         is_running = False
-        server_socket.close()
+
+        # Đóng tất cả kết nối client
+        for client in active_clients:
+            if client:
+                client.shutdown(socket.SHUT_RDWR)  # Dừng truyền và nhận
+        active_clients.clear()  # Xóa danh sách client
+
+        for thread in client_threads:
+            thread.join() # Đợi cho các thread thực hiện hết
+        client_threads.clear()
+
+        if server_socket:
+            server_socket.close()
+
+        # Chờ các luồng xử lý
+        time.sleep(1)
+
+        # Đóng file logs 
+        if logs:
+            logs.close()
+            logs = None
 
         # Cập nhật nút của GUI
         start_button.config(state="normal")
@@ -304,6 +339,13 @@ def on_close(root):
     global is_running # Dùng biến toàn cục đã khai báo
     if is_running:
         is_running = False
+
+        # Đóng tất cả kết nối client
+        for client_socket in active_clients:
+            if client_socket:
+                client_socket.close()
+        active_clients.clear()  # Xóa danh sách client
+
         server_socket.close()  # Đóng socket server
 
         # Đảm bảo thread chấp nhận client sẽ thoát
