@@ -163,7 +163,16 @@ def handle_client(client_socket, address, logs):
     logs.write(f"{formatted_datetime} [{address}] Client connected: {address}\n")
 
     # Nhận mã pin, check và gửi kết quả về cho client
-    pin = client_socket.recv(1024).decode('utf-8')
+    # Timeout nhập pin là 15s
+    client_socket.settimeout(15)
+    try:
+        pin = client_socket.recv(1024).decode('utf-8')
+    except socket.timeout:
+        formatted_datetime = datetime.datetime.now().strftime("[%H.%M.%S]")
+        logs.write(f"{formatted_datetime} [{address}] Client disconnected: {address}\n")
+
+        client_socket.close()
+        return
 
     with open(PIN_PATH,'r') as readPin:
         check_pin = readPin.read()
@@ -177,11 +186,12 @@ def handle_client(client_socket, address, logs):
         logs.write(f"{formatted_datetime} [{address}] PIN wrong\n")
 
         client_socket.send(f"NO".encode('utf-8'))
-    
+        
+    # Giao tiếp với client
     try:
         while True:
-            # Đặt thời gian chờ nhận dữ liệu là 60 giây
-            client_socket.settimeout(60)
+            # Đặt thời gian chờ nhận dữ liệu là 120 giây
+            client_socket.settimeout(120)
 
             try:
                 # Nhận lệnh từ client
@@ -203,7 +213,7 @@ def handle_client(client_socket, address, logs):
                     download_action(client_socket, address, command, logs)
 
             except socket.timeout:
-                # Nếu không nhận được command trong 60 giây
+                # Nếu không nhận được command trong 120 giây
                 break;
 
     except Exception as e: # Nếu có lỗi exception xảy thì đóng kết nối
@@ -259,8 +269,8 @@ def start_server(start_button, end_button):
 
         # Chạy thread chấp nhận client
         server_thread = threading.Thread(target=accept_clients)
-        server_thread.daemon = True #Đặt trạng thái daemon cho socket
-        server_thread.start()       #Bắt đầu thread
+        server_thread.daemon = True # Đặt trạng thái daemon cho socket
+        server_thread.start()       # Bắt đầu thread
 
         # Cập nhật nút của GUI
         start_button.config(state="disabled")

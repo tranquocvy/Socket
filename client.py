@@ -16,12 +16,52 @@ IP_ADDRESS = 1 # Tạm
 
 # Biến lưu trữ mã pin
 client_pin = ""
+client_socket = ""
 
 # Hàm cập nhật thanh tiến trình
 def update_progress_bar(progress_bar, label, value):
     progress_bar['value'] = value
     progress_bar.update_idletasks()
     label.config(text=f"{value:.0f}%")
+
+# Hàm upload
+def uploading(client_socket, file_name, file_path, parent_window):
+    # Tính toán kích thước file
+    total_size = os.path.getsize(file_path)
+    byte_sent = 0
+    # Thiết lập cửa số thanh tiến trình
+    progress_window = tk.Toplevel(parent_window)
+    progress_window.title("Uploading File")
+    progress_label = tk.Label(progress_window, text = f"Uploading {file_name}...")
+    progress_label.pack(pady=10)
+
+    progress_bar = ttk.Progressbar(progress_window, length = 400, maximum = 100, mode = 'determinate')
+    progress_bar.pack(pady=10)
+
+    percent_label = tk.Label(progress_window, text = "0%", font = ("Helvetica", 10))
+    percent_label.pack()
+
+    with open(file_path, 'rb') as f:
+        while (data := f.read(1024)):
+            try:
+                client_socket.send(data)
+                client_socket.recv(1024)
+                # Cập nhật byte đã gửi
+                byte_sent += len(data)
+                # Tính toán phần trăm và hiển thị tiến độ
+                progress = (byte_sent/total_size)*100
+                # Cập nhật tiến trình liên tục với phần trăm vừa tính
+                update_progress_bar(progress_bar, percent_label, progress)
+                progress_window.update()
+            except Exception as e:
+                messagebox.showerror("Lỗi", "Error handling server. Disconnected from server!")
+                sys.exit()
+                return
+                
+    # Gửi thông báo END và thanh tiến trình dừng lại 1 giây
+    client_socket.send(b'END')
+    time.sleep(0.5)
+    progress_window.destroy()
 
 def upload_file(client_socket, filepath, parent_window):
     try:
@@ -35,44 +75,9 @@ def upload_file(client_socket, filepath, parent_window):
 
             # Nhận thông báo từ server: tiếc tục gửi data
             client_socket.recv(1024)
-            # Tính toán kích thước file
-            total_size = os.path.getsize(filepath)
-            byte_sent = 0
-            # Thiết lập cửa sổ tiến trình
-            progress_window = tk.Toplevel(parent_window)
-            progress_window.title("Uploading File")
-            progress_label = tk.Label(progress_window, text = f"Uploading {filename}...")
-            progress_label.pack(pady=10)
-
-            progress_bar = ttk.Progressbar(progress_window, length = 400, maximum = 100, mode = 'determinate')
-            progress_bar.pack(pady=10)
-
-            percent_label = tk.Label(progress_window, text = "0%", font = ("Helvetica", 10))
-            percent_label.pack()
 
             # Upload
-            with open(filepath, 'rb') as f:
-                while (data := f.read(1024)):
-                    try:
-                        client_socket.send(data)
-                        client_socket.recv(1024)
-                        # Cập nhật byte đã gửi
-                        byte_sent += len(data)
-                        # Tính toán phần trăm và hiển thị tiến độ
-                        progress = (byte_sent/total_size)*100
-                        # Cập nhật tiến trình liên tục với phần trăm vừa tính
-                        update_progress_bar(progress_bar, percent_label, progress)
-                        progress_window.update()
-                    except Exception as e:
-                        messagebox.showerror("Lỗi", "Error handling server. Disconnected from server!")
-                        sys.exit()
-                        return
-                        
-
-            # Gửi thông báo END và thanh tiến trình dừng lại 1 giây
-            client_socket.send(b'END')
-            time.sleep(1)
-            progress_window.destroy()
+            uploading(client_socket, filename, filepath, parent_window)
 
             # parent là biến: hiện thông báo lên từ cửa sổ nào
             messagebox.showinfo("Thông báo", client_socket.recv(1024).decode('utf-8'), parent = parent_window)
@@ -86,51 +91,18 @@ def upload_file(client_socket, filepath, parent_window):
             # dirs: danh sách thư mục trong root
             # files: danh sách file trong root
             for root, dirs, files in os.walk(filepath):
-                for file in files:
-                    file_path = os.path.join(root, file)
+                for file_name in files:
+                    file_path = os.path.join(root, file_name)
                     relative_path = os.path.relpath(file_path, filepath)
 
                     # Gửi thông tin từng file
                     client_socket.send(f"file {relative_path}".encode('utf-8'))
                     ack = client_socket.recv(1024)
-                    # Tính toán kích thước file
-                    total_size = os.path.getsize(file_path)
-                    byte_sent = 0
-                    # Thiết lập cửa số thanh tiến trình
-                    progress_window = tk.Toplevel(parent_window)
-                    progress_window.title("Uploading File")
-                    progress_label = tk.Label(progress_window, text = f"Uploading {file}...")
-                    progress_label.pack(pady=10)
-
-                    progress_bar = ttk.Progressbar(progress_window, length = 400, maximum = 100, mode = 'determinate')
-                    progress_bar.pack(pady=10)
-
-                    percent_label = tk.Label(progress_window, text = "0%", font = ("Helvetica", 10))
-                    percent_label.pack()
 
                     # Gửi nội dung từng file
-                    with open(file_path, 'rb') as f:
-                        while (data := f.read(1024)):
-                            try:
-                                client_socket.send(data)
-                                ack = client_socket.recv(1024)
-                                # Cập nhật byte đã gửi
-                                byte_sent += len(data)
-                                # Tính toán phần trăm và hiển thị tiến độ
-                                progress = (byte_sent/total_size)*100
-                                # Cập nhật thanh tiến trình
-                                update_progress_bar(progress_bar, percent_label, progress)
-                                progress_window.update()
-                            except Exception as e:
-                                messagebox.showerror("Lỗi", "Error handling server. Disconnected from server!")
-                                sys.exit()
-                                return
-
-                    client_socket.send(b'END')
+                    # Upload
+                    uploading(client_socket, file_name, file_path, parent_window)
                     ack = client_socket.recv(1024)
-
-                    time.sleep(0.5)
-                    progress_window.destroy()
 
             client_socket.send(b'FOLDER_END')
             client_socket.recv(1024)
@@ -145,7 +117,6 @@ def download_file(client_socket, filename, download_path, parent_window):
 
         response = client_socket.recv(1024).decode()
         client_socket.send(b"ACK")
-
         if response.startswith("READY"):
             # Lấy kích thước file do bên server gửi về 
             _, file_size = response.split(" ")
@@ -400,14 +371,19 @@ def on_exit():
         exit() # Đóng cửa sổ
 
 # Check pin
-def main_root(pin_root, client_socket):
+def main_root(pin_root):
     global client_pin
+    global client_socket
 
     if client_pin:
         # Gửi pin
-        client_socket.send(f"{client_pin}".encode('utf-8'))
+        try:
+            client_socket.send(f"{client_pin}".encode('utf-8'))
+            pin = client_socket.recv(1024).decode('utf-8') # Check
+        except Exception as e:
+            messagebox.showerror("Lỗi", "Error handling server. Disconnected from server!")
+            sys.exit()
 
-        pin = client_socket.recv(1024).decode('utf-8') # Check
         if pin != "READY":
             messagebox.showerror("Lỗi", "PIN wrong!")
             client_socket.close()
@@ -490,11 +466,7 @@ def on_key_input(event, pin_entry):
     return "break"
 
 def main(): # Tạo socket bằng phương thức TCP/IP
-    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client_socket.connect((SERVER_HOST, SERVER_PORT))
-    IP_ADDRESS = client_socket.getsockname()[1]  # Lấy địa chỉ IP của client
-    print("Connected to server")
-
+    global client_socket
     try: 
         # Tạo cửa sổ chính
         pin_root = Tk()
@@ -513,7 +485,7 @@ def main(): # Tạo socket bằng phương thức TCP/IP
         pin_entry.bind("<Key>", lambda event: on_key_input(event, pin_entry))
 
         # Nút Verify
-        pin_button = Button(pin_root, text = "Verify", font = ('Cambria', 12), command = lambda: main_root(pin_root, client_socket), 
+        pin_button = Button(pin_root, text = "Verify", font = ('Cambria', 12), command = lambda: main_root(pin_root), 
                             bg = 'green', fg = 'black', padx = 20, pady = 10)
         pin_button.grid(row = 3, column = 1, pady = 20, sticky = 'n')
 
@@ -521,6 +493,15 @@ def main(): # Tạo socket bằng phương thức TCP/IP
         pin_root.grid_columnconfigure(0, weight = 1)
         pin_root.grid_columnconfigure(1, weight = 1)
         pin_root.grid_columnconfigure(2, weight = 1)
+
+        try:  # Kết nối đến server
+            client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client_socket.connect((SERVER_HOST, SERVER_PORT))
+            IP_ADDRESS = client_socket.getsockname()[1]  # Lấy địa chỉ IP của client
+            print("Connected to server")
+        except Exception as e:
+            messagebox.showerror("Lỗi", f"{e}")
+            sys.exit()
 
         pin_root.mainloop()  # Chạy vòng lặp chính của cửa sổ chính
         
