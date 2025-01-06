@@ -31,6 +31,7 @@ def uploading(client_socket, file_name, file_path, parent_window):
     byte_sent = 0
     # Thiết lập cửa số thanh tiến trình
     progress_window = tk.Toplevel(parent_window)
+    progress_window.geometry(f"300x200+{parent_window.winfo_x()}+{parent_window.winfo_y()}") # Lấy vị trí của pin_root
     progress_window.title("Uploading File")
     progress_label = tk.Label(progress_window, text = f"Uploading {file_name}...")
     progress_label.pack(pady=10)
@@ -149,6 +150,7 @@ def download_file(client_socket, filename, download_path, parent_window):
                         counter += 1
             byte_received = 0
             progress_window = tk.Toplevel(parent_window)
+            progress_window.geometry(f"300x200+{parent_window.winfo_x()}+{parent_window.winfo_y()}") # Lấy vị trí của root
             progress_window.title("Downloading File")
             progress_label = tk.Label(progress_window, text=f"Downloading {filename}...")
             progress_label.pack(pady = 10)
@@ -194,48 +196,48 @@ def download_file(client_socket, filename, download_path, parent_window):
         sys.exit() # Thoát khỏi root và đi đến finally của hàm main
 
 # Hàm chọn đường dẫn cho nút Browse
-def browse_upload(upload):
+def browse_upload(upload, parent_window):
     # Mở hộp thoại chọn tệp
-    file_path = filedialog.askopenfilename(title="Chọn tệp để upload", filetypes=[("All files", "*.*")])  # Chọn tệp bất kỳ
+    file_path = filedialog.askopenfilename(title = "Chọn tệp để upload", filetypes=[("All files", "*.*")], parent= parent_window)
     
     if file_path:  # Nếu có chọn tệp
         upload.delete(0, END)  # Xóa nội dung cũ
         upload.insert(0, file_path)  # Điền đường dẫn của tệp vào ô nhập
 
-def browse_upload_folder(upload):
+def browse_upload_folder(upload, parent_window):
     # Mở hộp thoại chọn thư mục
-    folder_path = filedialog.askdirectory(title = "Chọn thư mục để upload")  # Chọn thư mục
+    folder_path = filedialog.askdirectory(title = "Chọn thư mục để upload", parent = parent_window)  # Chọn thư mục
     
     if folder_path:
         upload.delete(0, END)
         upload.insert(0, folder_path)
 
-def browse_download(download):
-    file_path = filedialog.askopenfilename(title = "Chọn tệp để download", filetypes = [("All files", "*.*")])
+def browse_download(download, parent_window):
+    file_path = filedialog.askopenfilename(title = "Chọn tệp để download", filetypes = [("All files", "*.*")], parent = parent_window)
     if file_path:
         download.delete(0, END)
         download.insert(0, file_path)
 
-def browse_download_folder(download):
-    folder_path = filedialog.askdirectory(title = "Chọn thư mục để download")
+def browse_download_folder(download, parent_window):
+    folder_path = filedialog.askdirectory(title = "Chọn thư mục để download", parent = parent_window)
     if folder_path:
         download.delete(0, END)
         download.insert(0, folder_path)
 
-def browse_download_path(download):
-    folderpath = filedialog.askdirectory(title = "Chọn thư mục lưu file")
+def browse_download_path(download, parent_window):
+    folderpath = filedialog.askdirectory(title = "Chọn thư mục lưu file", parent = parent_window)
     if folderpath:
         download.delete(0, END)
         download.insert(0, folderpath)
 
 # Nút Upload và ô text bên cạnh
-def upload_action(client_socket, upload, parent):
+def upload_action(client_socket, upload, parent_window):
     filepath = upload.get()
-    upload_file(client_socket, filepath, parent)
+    upload_file(client_socket, filepath, parent_window)
     upload.delete(0, 'end')
 
 # Nút Download và ô text bên cạnh
-def download_action(client_socket, download_entry, download_path, parent):
+def download_action(client_socket, download_entry, download_path, parent_window):
     # Kiểm tra xem người dùng đã nhập đường dẫn tải về hay chưa
     if not download_path.get():
         messagebox.showerror("Lỗi", "Please select a download path")
@@ -251,15 +253,16 @@ def download_action(client_socket, download_entry, download_path, parent):
         return
 
     filename = download_entry.get()  # Lấy dữ liệu từ ô Entry
-    download_file(client_socket, filename, file_path, parent)
+    download_file(client_socket, filename, file_path, parent_window)
 
     download_entry.delete(0, 'end')
     download_path.delete(0, 'end')
 
 # Cửa sổ Upload
-def on_upload(root,client_socket):
+def on_upload(root, client_socket):
     root.withdraw()  
     new_window = Toplevel(root)  # Tạo cửa sổ con mới
+    new_window.geometry(f"300x200+{root.winfo_x()}+{root.winfo_y()}") # Lấy vị trí của root
     new_window.title("Upload")  # Đặt tiêu đề cho cửa sổ con
     new_window.geometry("610x250")  # Kích thước cửa sổ con
     new_window.configure(bg='#B6C99B')
@@ -274,7 +277,7 @@ def on_upload(root,client_socket):
     upload_entry = Entry(new_window, width=40, font=('Cambria', 12))
     upload_entry.grid(row = 1, column = 1, padx = 10, pady = 10)
 
-    upload_browse = Button(new_window, text = "Browse", font = ('Cambria', 10), fg = 'white', bg = 'blue', command = lambda:browse_upload(upload_entry))
+    upload_browse = Button(new_window, text = "Browse", font = ('Cambria', 10), fg = 'white', bg = 'blue', command = lambda:browse_upload(upload_entry, new_window))
     upload_browse.grid(row = 1, column = 2, padx = 10, pady = 10)
 
     # upload folder
@@ -286,7 +289,7 @@ def on_upload(root,client_socket):
     upload_entry_folder.grid(row = 2, column = 1, padx = 10, pady = 10)
 
     upload_browse_folder = Button(new_window, text = "Browse", font = ('Cambria', 10), fg = 'white', bg = 'blue', 
-                                  command=lambda:browse_upload_folder(upload_entry_folder))
+                                  command = lambda:browse_upload_folder(upload_entry_folder, new_window))
     upload_browse_folder.grid(row = 2, column = 2, padx = 10, pady = 10)
 
     # Nút Close
@@ -308,6 +311,7 @@ def on_upload(root,client_socket):
 def on_download(root, client_socket):
         root.withdraw()
         new_window = Toplevel(root)  # Tạo cửa sổ con mới
+        new_window.geometry(f"300x200+{root.winfo_x()}+{root.winfo_y()}") # Lấy vị trí của root
         new_window.title("Download")  # Đặt tiêu đề cho cửa sổ con
         new_window.geometry("610x280")  # Kích thước cửa sổ con
         new_window.configure(bg='#B6C99B')
@@ -322,7 +326,7 @@ def on_download(root, client_socket):
         download_path_entry.grid(row = 2, column = 1, padx = 5, pady = 5)
 
         download_path_browse = Button(new_window, text = "Browse", font = ('Cambria', 10), fg = 'white', bg = 'blue', 
-                                      command = lambda:browse_download_path(download_path_entry))
+                                      command = lambda:browse_download_path(download_path_entry, new_window))
         download_path_browse.grid(row = 2, column = 2, padx = 5, pady = 5)               
         
         # Nút download file
@@ -334,7 +338,7 @@ def on_download(root, client_socket):
         download_entry.grid(row = 3, column = 1, padx = 10, pady = 10)  
 
         download_browse = Button(new_window, text = "Browse", font = ('Cambria', 10), fg = 'white', bg = 'blue', 
-                                 command = lambda:browse_download(download_entry))
+                                 command = lambda:browse_download(download_entry, new_window))
         download_browse.grid(row = 3, column = 2, padx = 10, pady = 10)
 
         # Nút download folder
@@ -346,7 +350,7 @@ def on_download(root, client_socket):
         download_entry_folder.grid(row = 4, column = 1, padx = 10, pady = 10)
 
         download_browse_folder = Button(new_window, text = "Browse", font = ('Cambria', 10), fg = 'white', bg = 'blue', 
-                                        command = lambda:browse_download_folder(download_entry_folder))
+                                        command = lambda:browse_download_folder(download_entry_folder, new_window))
         download_browse_folder.grid(row = 4, column = 2, padx = 10, pady = 10)
 
         # Nút Close
@@ -400,6 +404,7 @@ def main_root(pin_root):
 
     # Tạo cửa sổ con mới
     root = Toplevel(pin_root)  # Tạo cửa sổ con từ pin_root
+    root.geometry(f"300x200+{pin_root.winfo_x()}+{pin_root.winfo_y()}") # Lấy vị trí của pin_root
     root.title('TCP/IP')  # Đặt tiêu đề cho cửa sổ con
     root.geometry("500x250")  # Kích thước cửa sổ con
     root.configure(bg='#B6C99B')
@@ -481,7 +486,7 @@ def main(): # Tạo socket bằng phương thức TCP/IP
         pin_entry = Entry(pin_root, width = 40, font = ('Cambria', 12), bg = 'gray', fg = 'white')
         pin_entry.grid(row = 2, column = 1, padx = 10, pady = 10)
 
-        # Ràng buộc sự kiện nhập liệu
+        # Ràng buộc cách nhập pin
         pin_entry.bind("<Key>", lambda event: on_key_input(event, pin_entry))
 
         # Nút Verify
