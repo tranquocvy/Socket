@@ -1,7 +1,6 @@
 import socket
 import os
 import time
-import threading
 from tkinter import *
 import tkinter as tk
 from tkinter import filedialog
