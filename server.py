@@ -262,7 +262,7 @@ def handle_client(client_socket, address, logs):
             client_socket.close()
 
 def accept_clients(): # Accept client connect
-    global is_running, logs, client_threads # Dùng biến toàn cục đã khai báo
+    global is_running, logs, client_threads, log_area # Dùng biến toàn cục đã khai báo
 
     formatted_datetime = datetime.datetime.now().strftime("%H.%M.%S_%d.%m.%Y")
     filelogs = f"{LOG_DIR}/{formatted_datetime}.txt"
@@ -292,11 +292,11 @@ def accept_clients(): # Accept client connect
         finally:
             formatted_datetime = datetime.datetime.now().strftime("[%H.%M.%S]")
             logs.write(f"{formatted_datetime} [Server] Server stopped\n")
-            if log_area:
+            if log_area: # Trường hợp tắt đột ngột
                 write_log(f"{formatted_datetime} [Server] Server stopped\n")
 
 def start_server(start_button, end_button):
-    global server_socket, server_thread, is_running # Dùng biến toàn cục đã khai báo
+    global server_socket, server_thread, is_running, log_area # Dùng biến toàn cục đã khai báo
 
     if is_running:
         messagebox.showinfo("Info", "Server is already running!")
@@ -324,7 +324,7 @@ def start_server(start_button, end_button):
 
 
 def end_server(start_button, end_button):
-    global server_socket, is_running # Dùng biến toàn cục đã khai báo
+    global server_socket, is_running, log_area # Dùng biến toàn cục đã khai báo
     global active_clients, logs, client_threads
  
     if not is_running:
@@ -341,7 +341,8 @@ def end_server(start_button, end_button):
         active_clients.clear()  # Xóa danh sách client
 
         for thread in client_threads:
-            thread.join() # Đợi cho các thread thực hiện hết
+            if thread.is_alive():
+                thread.join(timeout=5) # Đợi cho các thread (timeout 5s) thực hiện hết
         client_threads.clear()
 
         if server_socket:
@@ -421,8 +422,10 @@ def verifyPin(pin_root, root):
 
 # Giao diện pin
 def checkPIN(root):
+    global log_area
     # Tạo cửa sổ chính
     pin_root = Toplevel(root)
+    pin_root.geometry(f"300x200+{root.winfo_x()}+{root.winfo_y()}") # Lấy vị trí của pin_root
     pin_root.title('TCP/IP')
     pin_root.minsize(height = 250, width = 500)
     pin_root.configure(bg='black')  # Màu nền của cửa sổ chính là đen
